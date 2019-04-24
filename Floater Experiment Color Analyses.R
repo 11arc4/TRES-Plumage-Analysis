@@ -3,6 +3,8 @@ library(lme4)
 library(tidyverse)
 library(lmerTest)
 library(cowplot)
+library(MuMIn)
+options(na.action = "na.fail")
 
 #Import all nests for 2000
 nestSpec <- read.csv(
@@ -43,6 +45,10 @@ mod <- lmer(RC1_blue ~ LateNest*Sex + (1|NestID) , data=nestSpec)
 summary(mod)
 plot(mod)
 car::Anova(mod, type="III")
+dredge
+#Only one top model
+mam <- lmer(RC1_blue ~ LateNest+Sex + (1|NestID) , data=nestSpec)
+summary(mam)
 #YES different between sexes and late nests based on RC1_blue
 plot_blue1 <- ggplot(nestSpec, aes(fill=LateNest, y=RC1_blue, x=Sex))+
   geom_boxplot()+
@@ -53,6 +59,10 @@ mod <- lmer(RC2_blue ~ LateNest*Sex + (1|NestID) , data=nestSpec)
 summary(mod)
 plot(mod)
 car::Anova(mod, type="III")
+dredge(mod)
+#only one top model
+mam <- lmer(RC2_blue ~ LateNest + (1|NestID) , data=nestSpec)
+summary(mam)
 #YES: different between late nests based on RC2_blue (both sexes same)
 plot_blue2 <- ggplot(nestSpec, aes(fill=LateNest, y=RC2_blue, x=LateNest))+
   geom_boxplot()+
@@ -64,6 +74,10 @@ mod <- lmer(RC3_blue ~ LateNest*Sex + (1|NestID) , data=nestSpec)
 summary(mod)
 plot(mod)
 car::Anova(mod, type="III")
+dredge(mod)
+#only one top model-- full model
+mam <- mod 
+summary(mam)
 #YES: different response to late nestling between males and females (males differ, females don't)
 TukeyHSD(aov(mod))
 plot_blue3 <- ggplot(nestSpec, aes(fill=LateNest, y=RC3_blue, x=Sex))+
@@ -71,10 +85,14 @@ plot_blue3 <- ggplot(nestSpec, aes(fill=LateNest, y=RC3_blue, x=Sex))+
   labs(x=NULL, y="Blue RC3", fill=NULL)+
   theme_classic()
 
+#How does whiteness differ between late and early nests?
 mod <- lmer(RC1_white ~ LateNest*Sex + (1|NestID) , data=nestSpec)
 summary(mod)
 plot(mod)
 car::Anova(mod, type="III")
+dredge(mod)
+#Only one top model
+mam <- lmer(RC1_white ~ Sex + (1|NestID) , data=nestSpec)
 #Nope, just differs by sex
 plot_white1 <- ggplot(nestSpec, aes(y=RC1_white, x=Sex))+
   geom_boxplot(show.legend = F, fill="grey")+
@@ -85,6 +103,10 @@ mod <- lmer(RC2_white ~ LateNest*Sex + (1|NestID), data=nestSpec)
 summary(mod)
 plot(mod)
 car::Anova(mod, type="III")
+dredge(mod)
+#only one top model-- null
+mam <- lmer(RC2_white ~  (1|NestID), data=nestSpec)
+summary(mam)
 plot_white2 <- ggplot(nestSpec, aes(fill=LateNest, y=RC2_white, x=Sex))+
   geom_boxplot()+
   labs(x=NULL, y="White RC2", fill=NULL)+
@@ -98,19 +120,27 @@ plot_white2 <- ggplot(nestSpec, aes(fill=LateNest, y=RC2_white, x=Sex))+
 
 #What else do birds from late and normal nests differ based on?
 #body condition?
-nestSpec2 <- nestSpec %>% filter(!is.na(SMI)) %>% 
-  mutate(DaysSinceHatching= JulianDate-HatchJulian)
-mod <- lmer(SMI ~ LateNest*Sex + DaysSinceHatching+ (1|NestID), data=nestSpec2 %>% filter(DaysSinceHatching>-10)) #singular so not a good fit 
-mod <- lm(SMI ~ LateNest*Sex + DaysSinceHatching, data=nestSpec2 %>% filter(DaysSinceHatching>-10)) #Because lmer was singular it was reporting p values from the simple model
+nestSpec2 <- nestSpec %>% 
+  mutate(DaysSinceHatching= JulianDate-HatchJulian) %>%
+  filter(!is.na(SMI) & DaysSinceHatching>-10) # removes one bird that was assessed way earlier than everyone else. 
+mod <- lmer(SMI ~ LateNest*Sex + DaysSinceHatching+ (1|NestID), data=nestSpec2) #singular so not a good fit 
+mod <- lm(SMI ~ LateNest*Sex + DaysSinceHatching, data=nestSpec2) #Because lmer was singular it was reporting p values from the simple model
 summary(mod)
 plot(mod)
 car::Anova(mod, type="III")
-plot_SMI <- ggplot(nestSpec2%>% filter(DaysSinceHatching>-10), aes(color=LateNest, y=SMI, x=DaysSinceHatching))+
+dr <- dredge(mod)
+#4 top models, all including days since hatching, some including late nest
+model.avg(dr, subset= delta < 2, revised.var = TRUE )
+#SMI declines as nestlings age (feeding related stress). Late nesting birds have
+#lower SMI than earlier nestings birds in females, but not males.
+
+plot_SMI <- ggplot(nestSpec2, aes(color=LateNest, y=SMI, x=DaysSinceHatching))+
   geom_point()+
   facet_grid(~Sex)+
   geom_smooth(method="lm")+
   labs(x="Days since Hatch", y="Scaled Mass Index")+
   theme_classic()
+plot_SMI
 #Late nesting females tend to have lower SMI: no difference for males. 
 
 #age?
@@ -128,9 +158,12 @@ ggplot(nestSpec %>% filter(AgeAccuracy=="Exact"), aes(color=LateNest, y=AgeYrs, 
 #Clutch Size
 mod <- glm(ClutchSize ~LateNest, family="poisson", data=nest)
 plot(mod)
-AER::dispersiontest(mod, alternative="two.sided") #I think we're under dispersed. THat's less of a problem.  
+hist(resid(mod))
+AER::dispersiontest(mod, alternative="two.sided") #I think we're under dispersed. THat's less of a problem. but in an ideal world would be dealt with
 car::Anova(mod, type="III")
 summary(mod)
+dredge(mod) 
+#full model is the best model
 #smaller clutches in late nests
 plot_clutch <- ggplot(nest, aes(x=LateNest, y=ClutchSize))+
   geom_boxplot()+
@@ -139,11 +172,14 @@ plot_clutch <- ggplot(nest, aes(x=LateNest, y=ClutchSize))+
   theme_classic()
 
 #Hatch size
-mod <- glm(BroodSize ~LateNest, family="poisson", data=nest)
+nest_h <- nest %>% filter(!is.na(BroodSize))
+mod <- glm(BroodSize ~LateNest, family="poisson", data=nest_h)
 plot(mod)
-AER::dispersiontest(mod, alternative="two.sided") #still under dispersed. THat's less of a problem.  
+AER::dispersiontest(mod, alternative="two.sided") #a bit underdispersed, but totally acceptable now.   
 car::Anova(mod, type="III")
 summary(mod)
+dredge(mod)
+#full model is the best model
 #fewer nestlings in late nests (may still be a holdover from smaller clutches)
 plot_brood <- ggplot(nest, aes(x=LateNest, y=BroodSize))+
   geom_boxplot()+
@@ -152,11 +188,14 @@ plot_brood <- ggplot(nest, aes(x=LateNest, y=BroodSize))+
   theme_classic()
 
 #Fledge Num
-mod <- glm(NumFledged ~LateNest, family="poisson", data=nest)
+nest_f <- nest %>% filter(!is.na(NumFledged))
+mod <- glm(NumFledged ~LateNest, family="poisson", data=nest_f)
 plot(mod)
-AER::dispersiontest(mod, alternative="two.sided") # now a touch over dispersed but not so bad I wouldn't say  
+AER::dispersiontest(mod, alternative="two.sided") # now a touch over dispersed but egregious  
 car::Anova(mod, type="III")
 summary(mod)
+dredge(mod)
+#Best model by far is the full model. 
 plot_fledge <- ggplot(nest, aes(x=LateNest, y=NumFledged))+
   geom_boxplot()+
   geom_count()+
