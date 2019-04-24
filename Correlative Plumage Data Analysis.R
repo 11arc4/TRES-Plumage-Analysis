@@ -167,6 +167,49 @@ ggplot(adultsSpec %>% filter(!is.na(Sex) & !is.na(AgeClass2)), aes(x=RC1_white, 
 #probably the better body area to be looking at. Hard to say though since bird
 #might be picking up on something else.
 
+
+write.csv(adultsSpec %>% arrange(BandNo),
+          "~/Montogomerie Work/TRES Plumage/ARC TRES data/Compiled TRES Data/All Adult Spec.csv", 
+          na = "", 
+          row.names = F) 
+
+
+
+
+#What doe the plumage RCs mean? ie are they correlated with bluer, greener? 
+
+#blue RCs first
+
+ggplot(adultsSpec, aes(x=BlueChroma_back, y=RC1_blue))+
+  geom_point()
+ggplot(adultsSpec, aes(x=GreenChroma_back, y=RC1_blue))+
+  geom_point()
+ggplot(adultsSpec, aes(x=UVChroma_back, y=RC1_blue))+
+  geom_point()
+#Increasing RC1blue = bluer, no relationship with green or UV
+
+ggplot(adultsSpec, aes(x=BlueChroma_back, y=RC2_blue))+
+  geom_point()
+ggplot(adultsSpec, aes(x=GreenChroma_back, y=RC2_blue))+
+  geom_point()
+ggplot(adultsSpec, aes(x=UVChroma_back, y=RC2_blue))+
+  geom_point()
+#Increasing RC2 = greener, less UV, also some seperation between SY and ASY birds in blueness (less blue as it increases,). 
+
+
+ggplot(adultsSpec, aes(x=BlueChroma_back, y=RC3_blue, color=AgeClass2))+
+  geom_point()
+ggplot(adultsSpec, aes(x=GreenChroma_back, y=RC3_blue))+
+  geom_point()
+ggplot(adultsSpec, aes(x=UVChroma_back, y=RC3_blue))+
+  geom_point()
+#RC3 increases with increasing blue for the blue birds. Also can be high in SY females, Also increases with greenness and UV
+
+#Now white RCs
+#Not sure what to looks at 
+
+
+
 #Are plumage colors related to body conditions? 
 
 ggplot(adultsSpec %>% filter(!is.na(Sex)), aes(x=SMI, y=RC1_blue, color=AgeClass2 ))+
@@ -425,3 +468,5 @@ corrplot::corrplot(association[1:4, 5:8], p.mat = p.values$p[1:4, 5:8] , method 
 ggplot(mated_pairs, aes(x=RC2_blue.male, y=RC2_blue.female))+
   geom_point()+
   geom_smooth()
+
+
