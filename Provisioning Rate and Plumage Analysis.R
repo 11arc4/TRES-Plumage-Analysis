@@ -73,12 +73,16 @@ malefeeding <- feeding3 %>% filter(!is.na(RC1_blue_male) & !is.na(MeanMaleVisitR
 mod <- lm(MeanMaleVisitRate ~ BroodSize_1 + RC1_blue_male + RC2_blue_male + RC3_blue_male + RC1_white_male + RC2_white_male , data=malefeeding)
 plot(mod)
 dredge(mod)
+avg <- model.avg(dredge(mod), subset= delta < 2, revised.var = TRUE )
+summary(avg)
 #male color is not indicitive of their feeding rate
 
 femalefeeding_male <- feeding3 %>% filter(!is.na(RC1_blue_male) & !is.na(MeanFemaleVisitRate))
 mod <- lm(MeanFemaleVisitRate ~ BroodSize_1 + RC1_blue_male + RC2_blue_male + RC3_blue_male + RC1_white_male + RC2_white_male , data=femalefeeding_male)
 plot(mod)
 dredge(mod)
+avg <- model.avg(dredge(mod), subset= delta < 2, revised.var = TRUE )
+summary(avg)
 #male color also does not cause females to increase their feeding rates
 
 
@@ -86,17 +90,19 @@ dredge(mod)
 femalefeeding <- feeding3 %>% filter(!is.na(RC1_blue_female) & !is.na(MeanFemaleVisitRate) & AgeClass2_female !="SY")
 mod <- lm(MeanFemaleVisitRate ~ BroodSize_1 + RC1_blue_female + RC2_blue_female + RC3_blue_female + RC1_white_female + RC2_white_female , data=femalefeeding)
 plot(mod)
- dredge(mod)
-model.avg(results)
+dredge(mod)
+avg <- model.avg(dredge(mod), subset= delta < 2, revised.var = TRUE )
+summary(avg)
 #female color is not indicitive of her feeding rate
 
 malefeeding_female <- feeding3 %>% filter(!is.na(RC1_blue_female) & !is.na(MeanMaleVisitRate) & AgeClass2_female !="SY")
 mod <- lm(MeanMaleVisitRate ~ BroodSize_1 + RC1_blue_female + RC2_blue_female + RC3_blue_female + RC1_white_female + RC2_white_female , data=femalefeeding)
 plot(mod)
 dredge(mod)
-summary(mod)
-
-#Males adjust their feeding rate based on the female's feeding rate
+avg <- model.avg(dredge(mod), subset= delta < 2, revised.var = TRUE )
+summary(avg)
+#Males adjust their feeding rate based on the female's blueness (RC1_blue).
+#Bluer females have lazier males.
 
 
 

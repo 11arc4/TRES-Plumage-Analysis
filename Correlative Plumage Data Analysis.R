@@ -1,11 +1,13 @@
 #Which color variables are most indicitive of breeding success and body
 #condition?
 
-
-
+#load libraries
 library(psych)
 library(tidyverse)
 library(MuMIn)
+
+options(na.action = "na.fail")
+
 
 adultsSpec <- read.csv("~/Montogomerie Work/TRES Plumage/ARC TRES data/Compiled TRES Data/Adult Plumage and Morphometrics in Standard Daylight.csv", na.strings = "")
 
@@ -257,52 +259,48 @@ ggplot(adultsSpec %>% filter(!is.na(Sex)), aes(x=AgeYrs, y=RC3_blue, color=AgeCl
 
 
 
-
-nest <- read.csv("C:/Users/11arc/OneDrive/Documents/Montogomerie Work/TRES Plumage/ARC TRES data/Compiled TRES Data/Nest Data 1999-2000.csv", na.strings = "")
-
-
-nest2 <- nest %>% 
-  select(Year, Site.ID, Box.No, LateBox, BandMale, BandFem, FirstEggJulian, LastEggJulian, HatchJulian, ClutchSize, BroodSize, NumFledged) %>% 
-  rename(FledgeSize=NumFledged) %>% 
-  mutate(BandMale=as.character(BandMale),
-         BandFem=as.character(BandFem))
-
-
-male_nests <- inner_join(adultsSpec, nest2, by=c("BandNo"="BandMale", "Year"="Year" ) ) %>% 
-  mutate(NestID = paste(Year, Site.ID, Box.No, sep="-"))%>%
-  select(-c(BandFem, SiteID, BoxID)) %>%
-  select(BandNo, NestID, Site.ID, Box.No, NestID, 
-         everything())
-#Shoudl be 210 males with nests
-
-female_nests <- inner_join(adultsSpec, nest2, by=c("BandNo"="BandFem", "Year"="Year" ) ) %>% 
-  mutate(NestID = paste(Year, Site.ID, Box.No, sep="-"))%>%
-  select(-c(BandMale, SiteID, BoxID)) %>%
-  select(BandNo, NestID, Site.ID, Box.No, NestID, 
-         everything())
-#should be 222 females with nests. 
-
-
-
-nestSpec <- rbind(male_nests, female_nests)
-
-
-write.csv(nestSpec %>% arrange(NestID),
-          "~/Montogomerie Work/TRES Plumage/ARC TRES data/Compiled TRES Data/Nest data with plumage and Morphometrics in Standard Daylight.csv", 
-          na = "", 
-          row.names = F) 
-
-
-
+##COMBINE NEST DATA WITH PLUMAGE DATA-- FILE EXPORTED TO DROPBOX SO CAN SKIP THIS AND LOAD IT IN LATER ON
+# nest <- read.csv("C:/Users/11arc/OneDrive/Documents/Montogomerie Work/TRES Plumage/ARC TRES data/Compiled TRES Data/Nest Data 1999-2000.csv", na.strings = "")
+# 
+# 
+# nest2 <- nest %>% 
+#   select(Year, Site.ID, Box.No, LateBox, BandMale, BandFem, FirstEggJulian, LastEggJulian, HatchJulian, ClutchSize, BroodSize, NumFledged) %>% 
+#   rename(FledgeSize=NumFledged) %>% 
+#   mutate(BandMale=as.character(BandMale),
+#          BandFem=as.character(BandFem))
+# 
+# 
+# male_nests <- inner_join(adultsSpec, nest2, by=c("BandNo"="BandMale", "Year"="Year" ) ) %>% 
+#   mutate(NestID = paste(Year, Site.ID, Box.No, sep="-"))%>%
+#   select(-c(BandFem, SiteID, BoxID)) %>%
+#   select(BandNo, NestID, Site.ID, Box.No, NestID, 
+#          everything())
+# #Shoudl be 210 males with nests
+# 
+# female_nests <- inner_join(adultsSpec, nest2, by=c("BandNo"="BandFem", "Year"="Year" ) ) %>% 
+#   mutate(NestID = paste(Year, Site.ID, Box.No, sep="-"))%>%
+#   select(-c(BandMale, SiteID, BoxID)) %>%
+#   select(BandNo, NestID, Site.ID, Box.No, NestID, 
+#          everything())
+# #should be 222 females with nests. 
+# 
+# 
+# 
+# nestSpec <- rbind(male_nests, female_nests)
+# 
+# 
+# write.csv(nestSpec %>% arrange(NestID),
+#           "~/Montogomerie Work/TRES Plumage/ARC TRES data/Compiled TRES Data/Nest data with plumage and Morphometrics in Standard Daylight.csv", 
+#           na = "", 
+#           row.names = F) 
+# 
 
 
 
 
 
 
-
-
-
+nestSpec <- read.csv( "~/Montogomerie Work/TRES Plumage/ARC TRES data/Compiled TRES Data/Nest data with plumage and Morphometrics in Standard Daylight.csv")
 
 #What questions are we interested in? 
 
@@ -318,18 +316,25 @@ nestSpec <-  nestSpec %>% mutate(HatchRate = BroodSize/ClutchSize,
                                  Year =factor(Year))
 
 #Make datasets for each ext that includ eonly nests that weren't laid it late
-#boxes (e.g. were from natural variation) AND we speced the parent
+#boxes (e.g. were from natural variation) AND we speced the parent Only very few
+#SY females so we won't look at them here. ALso, will only look at
+#non-experimental boxes (excluding floaters!)
+
 male_nests2 <- male_nests  %>%
   filter( !is.na(RC1_blue) & LateBox=="N")%>%
   mutate(HatchRate = BroodSize/ClutchSize, 
          FledgeRate = FledgeSize/BroodSize, 
-         Year =factor(Year))
+         Year =factor(Year)) %>% 
+  group_by(BandNo, NestID) %>% 
+  summarise_all(first) #remove duplicates of 3 males 
+
 female_nests2 <- female_nests %>% 
   filter(!is.na(RC1_blue) & LateBox=="N" & !is.na(AgeClass2) & AgeClass2 !="SY")%>% 
   mutate(HatchRate = BroodSize/ClutchSize, 
          FledgeRate = FledgeSize/BroodSize, 
-         Year =factor(Year))
-#Only very few SY females so we won't look at them here. ALso, will only look at non-experimental boxes (excluding floaters!)
+         Year =factor(Year))%>% 
+  group_by(BandNo, NestID) %>% 
+  summarise_all(first) #remove duplicates of 6 females 
 
 
 #Does parental color influence any of these traits based on the natural variation?
@@ -340,108 +345,136 @@ mod<- lm(FirstEggJulian ~ RC1_blue + RC2_blue + RC3_blue + RC1_white + RC2_white
 #198 observations, probably fine to use.
 plot(mod)
 hist(resid(mod))
-options(na.action = "na.fail")
 dredge(mod)
+avg <- model.avg(dredge(mod), subset= delta < 2, revised.var = TRUE )
+summary(avg)
 car::Anova(mod)
-#Both blue back and white undertail coverlets correlated with first egg date in males
+#Males that have higher RC2_blue scores (less green, more UV) and higher RC2_white scores started nests earlier
+
+plot_DateA <- ggplot(male_nests2, aes(x=RC2_blue, y=FirstEggJulian))+
+  geom_point()+
+  geom_smooth(method="lm")+ #points aren't excerting leverage
+  labs(x="Male Blue RC2", y="First Egg Date")
+
+
+plot_DateB <- ggplot(male_nests2, aes(x=RC2_white, y=FirstEggJulian))+
+  geom_point()+
+  geom_smooth(method="lm")+ #Points aren't excerting leverage
+  labs(x="Male White RC2", y="First Egg Date")
+
+
 
 #female color on first egg date
-female_nests3 <- female_nests2 %>% filter(!is.na(FirstEggJulian))
+female_nests3 <- female_nests2 %>% filter(!is.na(FirstEggJulian) )
 
 mod<- lm(FirstEggJulian ~ RC1_blue + RC2_blue + RC3_blue + RC1_white + RC2_white + Year, data=female_nests3) 
 #187 observations, probably fine to use.
 plot(mod)
 hist(resid(mod))
 dredge(mod)
-car::Anova(mod)
-#Female color not correlated with first egg date (based on dredging, RC3_blue and RC1_white probably ARE correlated)
+avg <- model.avg(dredge(mod), subset= delta < 2, revised.var = TRUE )
+summary(avg)
+#Females that have higher RC3_blue scores  lay eggs earlier. ALso some year differences. 
 
+plot_DateC <- ggplot(female_nests2, aes(x=RC3_blue, y=FirstEggJulian, color=Year))+
+  geom_point()+
+  geom_smooth(method="lm")+ #points aren't excerting leverage
+  labs(x="Female Blue RC2", y="First Egg Date")
+  #facet_grid(~Year)
 
 
 
 #male color on clutch size?
 male_nests3 <- male_nests2 %>% filter(!is.na(ClutchSize))
 
-mod<- glm(ClutchSize ~ RC1_blue + RC2_blue + RC3_blue + RC1_white + RC2_white + Year, 
-          family="poisson", 
+mod<- lm(ClutchSize ~ RC1_blue + RC2_blue + RC3_blue + RC1_white + RC2_white + Year, 
+          #family="poisson", 
           data=male_nests3) 
 #179 observations, probably fine to use.
 plot(mod)
 hist(resid(mod))
 dredge(mod)
-car::Anova(mod)
-#Male color does not influence clutch size
+avg <- model.avg(dredge(mod), subset= delta < 2, revised.var = TRUE )
+summary(avg)
+#Bluer and greener males have larger clutch sizes (higher RC1_blue and RC2_blue)
+
 
 #female color on clutch size
 female_nests3 <- female_nests2 %>% filter(!is.na(ClutchSize))
 
-mod<- glm(ClutchSize ~ RC1_blue + RC2_blue + RC3_blue + RC1_white + RC2_white + Year , 
-         family="poisson",
+mod<- lm(ClutchSize ~ RC1_blue + RC2_blue + RC3_blue + RC1_white + RC2_white + Year , 
+         #family="poisson",
          data=female_nests3) 
 #187 observations, probably fine to use.
+hist(resid(mod))
 plot(mod)
 hist(resid(mod))
 dredge(mod)
-car::Anova(mod)
-#Female color not associated with clutch size either. 
+avg <- model.avg(dredge(mod), subset= delta < 2, revised.var = TRUE )
+summary(avg)
+#Female color not associated with clutch size  
 
 
 #male color on hatch rate?
 male_nests3 <- male_nests2 %>% filter(!is.na(BroodSize))
 
-mod<- glm(BroodSize ~ RC1_blue + RC2_blue + RC3_blue + RC1_white + RC2_white + Year, 
-          family="poisson", 
+mod<- lm(BroodSize ~ RC1_blue + RC2_blue + RC3_blue + RC1_white + RC2_white + Year, 
+          #family="poisson", 
           data=male_nests3) 
 #178 observations, probably fine to use.
+#underdispersed if poisson, but seems to fit normal
 plot(mod)
 hist(resid(mod))
-dredge(mod)
-car::Anova(mod)
-#Male color does not influence brood size
+dredge(mod) # LOT of models with delta <2
+avg <- model.avg(dredge(mod), subset= delta < 2, revised.var = TRUE )
+summary(avg)
+#Male color does not influence brood size. 
 
 #female color on brood size
 female_nests3 <- female_nests2 %>% filter(!is.na(BroodSize) )
 
-mod<- glm(BroodSize ~ RC1_blue + RC2_blue + RC3_blue + RC1_white + RC2_white + Year , 
-          family="poisson",
+mod<- lm(BroodSize ~ RC1_blue + RC2_blue + RC3_blue + RC1_white + RC2_white + Year , 
+          #family="poisson",
           data=female_nests3) 
 #186 observations, probably fine to use.
 plot(mod)
 hist(resid(mod))
 dredge(mod)
-car::Anova(mod)
+avg <- model.avg(dredge(mod), subset= delta < 2, revised.var = TRUE )
+summary(avg)
 #Female color not associated with brood size either. 
 
 
 
 
 #male color on fledge rate?
-male_nests3 <- male_nests2 %>% filter(!is.na(FledgeSize) & BroodSize>0 )
-
-mod<- glm(FledgeSize ~ RC1_blue + RC2_blue + RC3_blue + RC1_white + RC2_white + Year, 
-          family="poisson", 
+male_nests3 <- male_nests2 %>% filter(!is.na(FledgeSize)  ) 
+mod<- lm(FledgeSize ~ RC1_blue + RC2_blue + RC3_blue + RC1_white + RC2_white + Year, 
+      #    family="poisson", 
           data=male_nests3) 
 summary(mod)
-AER::dispersiontest(mod) #Rather underdispersed, probably because of zero inflation. Might want to deal with that. 
-#114 observations, probably fine to use.
-plot(mod)
+#113 observations
+plot(mod)  #Really doesn't fit normal distribution
 hist(resid(mod))
 dredge(mod)
+avg <- model.avg(dredge(mod), subset= delta < 2, revised.var = TRUE )
+summary(avg)
 car::Anova(mod)
 #Male color does not influence fledge rate
 
 #female color on fledge rate
 female_nests3 <- female_nests2 %>% filter(!is.na(FledgeSize)) # & BroodSize>0)
 
-mod<- glm(FledgeSize ~ RC1_blue + RC2_blue + RC3_blue + RC1_white + RC2_white + Year , 
-          family="poisson",
+mod<- lm(FledgeSize ~ RC1_blue + RC2_blue + RC3_blue + RC1_white + RC2_white + Year , 
+      #    family="poisson",
           data=female_nests3) 
 #186 observations, probably fine to use.
 AER::dispersiontest(mod) #dispersion looks OK
-plot(mod)
+plot(mod) #Not normal, should not use normal distrubution
 hist(resid(mod))
 dredge(mod)
-car::Anova(mod)
+avg <- model.avg(dredge(mod), subset= delta < 2, revised.var = TRUE )
+summary(avg)
 #Blue color of females (Theta) associated with higher fledging rates when we do binomial
 #No color variables associated otherwise
 
